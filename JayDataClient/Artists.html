@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ChinookDataService via JayData</title>
+    <script type="text/javascript" src="/scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/datajs-1.0.3.js"></script>
+    <script type="text/javascript" src="/scripts/jaydata.js"></script>
+    <script type="text/javascript" src="/scripts/jaydataproviders/oDataProvider.js"></script>
+    <script type="text/javascript" src="chinook.js"></script>
+ <script>
+     // notes:
+     // JSONP
+     // this example works with JSONP so can access cross-domain service
+     // JSONP only works for GET, i.e. for read-only clients
+     // to get JSONP to work needed to set enableJSONP : true when creating context
+     // callback function name is set automatically, needs no configuration
+     // will send $format=json and $callback= parameters in URL, serivce needs to support these
+     // for WCF Data Service, needs to be version 5.2 or later to support them, using 5.3 in this demo
+     // BUT 5.3 by default returns JSON Light, which JayData 1.2.6, used here, does not understand
+     // so, need to set:
+     // config.DataServiceBehavior.MaxProtocolVersion = DataServiceProtocolVersion.V2; 
+     // in service so that JSON Verbose is returned
+     // JayData 1.3 will apparently support JSON Light
+     // 
+     // CORS - unless configured for JSONP will use CORS if browser supports it
+     // however WCF Data Services doesn't support CORS
+
+     var chinookContext = new ChinookService.Models.ChinookEntities({
+         name: 'oData',
+         enableJSONP: true,
+         oDataServiceHost: 'http://localhost:1114/ChinookDataService.svc'
+     });
+
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     $(function () {
+         // sends http://localhost:1114/ChinookDataService.svc/Artists?$filter=(Name%20eq%20%27Led%20Zeppelin%27)&$expand=Albums&$callback=parent.handleJSONP_0&$format=json
+
+         chinookContext.Artists
+             //.take(10)
+             .filter(function (artist) { return artist.Name == 'Led Zeppelin'; })
+             .include("Albums")
+             .toArray(function (data) {
+                 console.dir(data);
+                 data.forEach(function (artist) {
+                     $('#artists').append(
+                         createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                 });
+         });
+
+     });
+    </script>
+</head>
+<body>
+    <ul id="artists">
+    </ul>
+</body>
+</html>

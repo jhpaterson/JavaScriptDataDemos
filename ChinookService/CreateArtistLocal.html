@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ChinookDataService via JayData</title>
+    <script type="text/javascript" src="/scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/datajs-1.0.3.js"></script>
+    <script type="text/javascript" src="/scripts/jaydata.js"></script>
+    <script type="text/javascript" src="/scripts/jaydataproviders/oDataProvider.js"></script>
+    <script type="text/javascript" src="chinook.js"></script>
+ <script>
+     var chinookOnline = new ChinookService.Models.ChinookEntities({
+         name: 'oData',
+         oDataServiceHost: 'http://localhost:1114/ChinookDataService.svc'
+     });
+
+     var chinookOffline = new ChinookService.Models.ChinookEntities({
+         name: 'local',
+         databaseName: 'ChinookDB'
+     });
+
+     var artist = new ChinookModel.Artist();
+     artist.Name = "New Artist";
+
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     function synchronizeData() {
+         chinookOffline
+             .Artists
+             .toArray(function (artists) {
+                 chinookOnline.addMany(artists);
+                 chinookOnline.saveChanges(function () {
+                     chinookOffline
+                      .Artists
+                      .toArray(function (localartists) {
+                          localartists.forEach(function (localartist) {
+                              chinookOffline.Artists.remove(localartist);
+                          });
+                          chinookOffline.saveChanges(function () {
+                              listRemote();
+                              listLocal();
+                          });
+                      });
+                 });
+             })
+     }
+
+     function listLocal() {
+         $("#artists").empty();
+         chinookOffline.Artists
+                .orderByDescending(function (album) { return album.ArtistId })
+                .take(5)
+                .toArray(function (data) {
+                    console.dir(data);
+                    data.forEach(function (artist) {
+                        $('#artists').append(
+                            createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                    });
+                });
+         }
+
+     function listRemote() {
+         $("#artistsremote").empty();
+         chinookOnline.Artists
+                .orderByDescending(function (album) { return album.ArtistId })
+                .take(5)
+                .toArray(function (data) {
+                    console.dir(data);
+                    data.forEach(function (artist) {
+                        $('#artistsremote').append(
+                            createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                    });
+                });
+     }
+
+     $(function () {
+         $("#currentartistname").html(artist.Name);
+         $("#artistname").val("");
+
+         $("#sync").click(synchronizeData);
+
+         $("#save").click(function () {
+             artist.Name = $("#artistname").val();
+             $("#artists").empty();
+             $("#message").append("Saving " + artist.Name);
+
+             chinookOffline.add(artist);
+             chinookOffline.saveChanges().then(function () {
+                    listLocal();
+                    $("#message").html("");
+                    artist.Name = "New Artist";
+                    $("#currentartistname").html(artist.Name);
+                    $("#artistname").val("");
+
+                    artist = new ChinookModel.Artist();
+                    artist.Name = "New Artist";
+             });
+         });
+     });
+    </script>
+</head>
+<body>
+    <h3>Add a new Artist</h3>
+    <form> 
+        <h4>Artist</h4>
+        <div>Artist name: <input type="text" id="artistname" name="artistname"/>&nbsp;
+            <button type="button" id="save">Save Artist</button>
+        </div>   
+        <p>
+            <button type="button" id="sync">Synchronise</button>
+        </p> 
+    </form>
+    <div id="message"></div>
+    <h4>local</h4>
+    <ul id="artists">
+    </ul>
+    <h4>remote</h4>
+    <ul id="artistsremote">
+    </ul>
+</body>
+</html>

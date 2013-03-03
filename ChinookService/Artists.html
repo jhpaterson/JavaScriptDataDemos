@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ChinookDataService via JayData</title>
+    <script type="text/javascript" src="/scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/datajs-1.0.3.js"></script>
+    <script type="text/javascript" src="/scripts/jaydata.js"></script>
+    <script type="text/javascript" src="/scripts/jaydataproviders/oDataProvider.js"></script>
+    <script type="text/javascript" src="chinook.js"></script>
+ <script>
+     // notes:
+     // this example is in same project as server so is not using a cross-domain service
+     // JSONP/CORS not required
+
+     // configure service
+     var chinookContext = new ChinookService.Models.ChinookEntities({
+         name: 'oData',
+         oDataServiceHost: 'http://localhost:1114/ChinookDataService.svc'
+     });
+
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     $(function () {
+         // QUERY
+         // sends http://localhost:1114/ChinookDataService.svc/Artists?$filter=(Name%20eq%20%27Led%20Zeppelin%27)&$expand=Albums
+
+         chinookContext.Artists
+             //.take(10)
+             .filter(function (artist) { return artist.Name == 'Pink Floyd'; })
+             .include("Albums")
+             .toArray(function (data) {
+                 console.dir(data);
+                 data.forEach(function (artist) {
+                     $('#artists').append(
+                         createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                 });
+         });
+
+         // UPDATE - get first artist and update Name property
+         chinookContext.Artists
+             .first(null, null, function (artist) {
+                 chinookContext.Artists.attach(artist);
+                 artist.Name = "DC/AC";
+                 console.dir(artist);
+                 chinookContext.saveChanges()
+                     .then(console.dir(chinookContext.stateManager.trackedEntities));
+         });
+
+     });
+    </script>
+</head>
+<body>
+    <ul id="artists">
+    </ul>
+</body>
+</html>

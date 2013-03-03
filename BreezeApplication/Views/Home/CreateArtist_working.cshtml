@@ -1,0 +1,125 @@
+﻿@{Layout = null;}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Create Breezy Artist</title>
+    <script src="/Scripts/jquery-1.8.2.min.js"></script>
+    <script src="~/Scripts/knockout-2.2.0.js"></script>
+    <script src="/Scripts/q.js"></script>
+    <script src="/Scripts/breeze.debug.js"></script>
+ <script>
+     // configure service - using backStore rather than Knockout
+     breeze.config.initializeAdapterInstance("modelLibrary", "backingStore", true);
+     var serviceName = '/api/chinook';
+     var manager = new breeze.EntityManager(serviceName);
+
+     // initialise object to be constructed
+     var artist = {};
+     artist.Name = "New Artist";
+     artist.Albums = [];
+
+     // creates an <li> element
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     // save
+     function saveArtist() {
+         // create entities to save with EntityManager 
+         var artistToSave = manager.createEntity('Artist', { Name: artist.Name });
+         artist.Albums.forEach(function (album) {
+             var albumToAdd = manager.createEntity('Album', { Title: album.Title });
+             albumToAdd.setProperty("Artist", artistToSave);
+         });
+
+         $("#artists").empty();
+         $("#message").append("Saving " + artistToSave.Name);
+
+         // save changes then query for updated data
+         manager.saveChanges().then(function () {
+             var query = breeze.EntityQuery.from("Artists")
+                 .expand("Albums")
+                 .orderBy("ArtistId desc")
+                 .take(5);
+
+             manager.executeQuery(query).then(function (data) {
+                 console.dir(data.results);
+                 data.results.forEach(function (artist) {
+                     $('#artists').append(
+                         createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                 });
+
+                 artist.Name = "New Artist";
+                 artist.Albums = [];
+
+                 $("#message").html("");
+                 $("#currentartistname").html(artist.Name);
+                 $("#currentalbums").empty();
+                 $("#artistname").val("");
+                 $("#albumtitle").val("");
+             });
+         });
+     }
+
+
+     $(function () {
+         $("#currentartistname").html(artist.Name);
+         $("#artistname").val("");
+         $("#albumtitle").val("");
+
+         $("#updateartist").click(function () {
+             artist.Name = $("#artistname").val();
+             $("#currentartistname").html($("#artistname").val());
+         });
+
+         $("#addalbum").click(function () {
+             var album = {};
+             album.Title = $("#albumtitle").val();
+             artist.Albums.push(album);
+             $('#currentalbums').append(
+                $('<li></li>').append(album.Title)
+             );
+             $("#albumtitle").val("");
+         });
+
+         $("#save").click(function () {
+             // load metadata if not already loaded
+             if (manager.metadataStore.getEntityTypes().length > 0) {
+                 saveArtist();
+             }
+             else {
+                 manager.metadataStore.fetchMetadata(serviceName)
+                     .then(function () {
+                         saveArtist();
+                     })
+                 .fail(function (error) {
+                     alert(error.message);
+                 });
+             }
+         });
+     });
+    </script>
+</head>
+<body>
+    <h3>Add a new Artist</h3>
+    <form> 
+        <h4>Artist</h4>
+        <div>Artist name: <input type="text" id="artistname" name="artistname"/>&nbsp;
+            <button type="button" id="updateartist">Update</button><br /><br />
+            Current name: <span id="currentartistname"></span><br />
+        </div>   
+        <h4>Albums</h4>
+            Album title to add: <input type="text" id="albumtitle" name="albumtitle"/>&nbsp;
+            <button type="button" id="addalbum">Add to Artist</button><br />
+            <ul id="currentalbums"></ul>
+        </p>
+        <p>
+            <button type="button" id="save">Save Artist</button>
+        </p> 
+    </form>
+    <div id="message"></div>
+    <ul id="artists">
+    </ul>
+</body>
+</html>

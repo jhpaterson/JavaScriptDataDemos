@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ChinookDataService via JayData</title>
+    <script type="text/javascript" src="/scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="Scripts/knockout-2.2.1.js"></script>
+    <script type="text/javascript" src="/scripts/datajs-1.0.3.js"></script>
+    <script type="text/javascript" src="/scripts/jaydata.js"></script>
+    <script type="text/javascript" src="/scripts/jaydataproviders/oDataProvider.js"></script>
+    <script type="text/javascript" src="chinook.js"></script>
+ <script>
+
+     // configure service
+     var chinookContext = new ChinookService.Models.ChinookEntities({
+         name: 'oData',
+         enableJSONP: true,
+         oDataServiceHost: 'http://localhost:1114/ChinookDataService.svc'
+     });
+
+     $(function () {
+
+         // sends http://localhost:1114/ChinookDataService.svc/Tracks?$filter=(Milliseconds%20lt%20120000)&$expand=Album/Artist&$orderby=Album/Artist/Name&$callback=parent.handleJSONP_0&$format=json
+
+         // Knockout view model
+         function ChinookViewModel() {
+             this.allTracks = ko.observableArray([]);
+             chinookContext.Tracks
+                 .filter(function (track) { return track.Milliseconds < 120000; })
+                 .include("Album.Artist")
+                 .orderBy(function (track) { return track.Album.Artist.Name })
+                 .toArray(this.allTracks);
+         };
+
+         ko.applyBindings(new ChinookViewModel);
+     });
+    </script>
+</head>
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th>Track name</th>
+                <th>Artist</th>
+                <th>Album</th>    
+            </tr>
+        </thead>
+        <tbody data-bind="foreach: allTracks">
+            <tr>
+                <td data-bind="text: Name"></td>
+                <td data-bind="text: Album.Artist.Name"></td>
+                <td data-bind="text: Album.Title"></td>    
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

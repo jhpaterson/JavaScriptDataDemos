@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>ChinookDataService via JayData</title>
+    <script type="text/javascript" src="/scripts/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript" src="/scripts/datajs-1.0.3.js"></script>
+    <script type="text/javascript" src="/scripts/jaydata.js"></script>
+    <script type="text/javascript" src="/scripts/jaydataproviders/oDataProvider.js"></script>
+    <script type="text/javascript" src="chinook.js"></script>
+ <script>
+     // configure service
+     var chinookContext = new ChinookService.Models.ChinookEntities({
+         name: 'oData',
+         oDataServiceHost: 'http://localhost:1114/ChinookDataService.svc'
+     });
+
+     // initialise object to be constructed
+     var artist = new ChinookModel.Artist();
+     artist.Albums = [];
+     artist.Name = "New Artist";
+
+     // creates an <li> element
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     $(function () {
+         $("#currentartistname").html(artist.Name);
+         $("#artistname").val("");
+         $("#albumtitle").val("");
+
+         $("#addalbum").click(function () {
+             var album = new ChinookModel.Album();
+             album.Title = $("#albumtitle").val();
+             artist.Albums.push(album);
+             $('#currentalbums').append(
+                $('<li></li>').append(album.Title)
+             );
+             $("#albumtitle").val("");
+         });
+
+         $("#updateartist").click(function () {
+             artist.Name = $("#artistname").val();
+             $("#currentartistname").html(artist.Name);
+         });
+
+         $("#save").click(function () {
+             $("#artists").empty();
+             $("#message").append("Saving " + artist.Name);
+
+             // add artist object to context and save
+             chinookContext.add(artist);
+             chinookContext.saveChanges().then(function () {
+                     chinookContext.Artists
+                    .orderByDescending(function (album) { return album.ArtistId })
+                    .include("Albums")
+                    .take(5)
+                    .toArray(function (data) {
+                     console.dir(data);
+                     data.forEach(function (artist) {
+                         $('#artists').append(
+                             createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                     });
+
+                     $("#message").html("");
+                     artist.Name = "New Artist";
+                     $("#currentartistname").html(artist.Name);
+                     $("#currentalbums").empty();
+                     $("#artistname").val("");
+                     $("#albumtitle").val("");
+                 });
+             });
+       
+         });
+
+     });
+    </script>
+</head>
+<body>
+    <h3>Add a new Artist</h3>
+    <form> 
+        <h4>Artist</h4>
+        <div>Artist name: <input type="text" id="artistname" name="artistname"/>&nbsp;
+            <button type="button" id="updateartist">Update</button><br /><br />
+            Current name: <span id="currentartistname"></span><br />
+        </div>   
+        <h4>Albums</h4>
+            Album title to add: <input type="text" id="albumtitle" name="albumtitle"/>&nbsp;
+            <button type="button" id="addalbum">Add to Artist</button><br />
+            <ul id="currentalbums"></ul>
+        </p>
+        <p>
+            <button type="button" id="save">Save Artist</button>
+        </p> 
+    </form>
+    <div id="message"></div>
+    <ul id="artists">
+    </ul>
+</body>
+</html>

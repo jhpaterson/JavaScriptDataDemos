@@ -1,0 +1,53 @@
+﻿@{Layout = null;}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Light Breeze</title>
+    <script src="/Scripts/jquery-1.8.2.min.js"></script>
+    <script src="~/Scripts/knockout-2.2.0.js"></script>
+    <script src="/Scripts/q.js"></script>
+    <script src="/Scripts/breeze.debug.js"></script>
+ <script>
+     
+     function createItemLI(name, id, css) {
+         var li = $('<li></li>').append(name).addClass(css).data('id', id);
+         return li;
+     }
+
+     $(function () {
+         // configure Breeze to talk to particular type of remote service
+         // default is Knockout ("ko" rather than "backingStore")
+         // here we are not using Knockout, so use  Breeze's native model library "backingStore" 
+         // which does not wrap properties in observables
+         breeze.config.initializeAdapterInstance("modelLibrary", "backingStore", true);
+         var serviceName = 'api/chinook';
+         var manager = new breeze.EntityManager(serviceName);
+
+         // predicates
+         var p1 = new breeze.Predicate("Name", "startsWith", "U");
+         var p2 = new breeze.Predicate("Name", "startsWith", "V");
+
+         var query = breeze.EntityQuery.from("Artists")
+             .expand("Albums")
+             .where(p1.or(p2))
+             .orderBy("Name");
+
+         manager.executeQuery(query)
+            .then(function(data){
+                console.dir(data.results);
+                data.results.forEach(function (artist) {
+                    $('#artists').append(
+                        createItemLI(artist.Name, artist.ArtistId, 'artists'));
+                });
+            })
+            .fail(function (error) {
+                alert(error.message);
+            });
+     });
+    </script>
+</head>
+<body>
+    <ul id="artists">
+    </ul>
+</body>
+</html>
